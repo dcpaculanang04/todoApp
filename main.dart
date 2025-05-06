@@ -1,68 +1,69 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'To-Do App',
       debugShowCheckedModeBanner: false,
-      title: 'TODO App',
       theme: ThemeData(
-        primarySwatch: Colors.lightBlue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+        primaryColor: Colors.blue,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.red,
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+        ),
       ),
-      home: TodoListScreen(),
+      home: const TodoScreen(),
     );
   }
 }
 
-class TodoListScreen extends StatefulWidget {
-  @override
-  _TodoListScreenState createState() => _TodoListScreenState();
+class Task {
+  String id;
+  String title;
+  bool isCompleted;
+
+  Task({
+    required this.id,
+    required this.title,
+    this.isCompleted = false,
+  });
 }
 
-class _TodoListScreenState extends State<TodoListScreen> {
-  List<String> todoItems = [];
+class TodoScreen extends StatefulWidget {
+  const TodoScreen({Key? key}) : super(key: key);
 
-  TextEditingController _controller = TextEditingController();
+  @override
+  TodoScreenState createState() => TodoScreenState();
+}
+
+class TodoScreenState extends State<TodoScreen> {
+  final List<Task> _tasks = [];
+  final _todoController = TextEditingController();
 
   @override
   void dispose() {
-    _controller.dispose();
+    _todoController.dispose();
     super.dispose();
   }
 
-  void _addTodoItem(String task) {
-    if (task.isNotEmpty) {
-      setState(() {
-        todoItems.add(task);
-
-      });
-      _controller.clear();
-    }
-  }
-
-  void _deleteTodoItem(int index) {
-    setState(() {
-      todoItems.removeAt(index);
-    });
-  }
-//AppBar Theme
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 252, 255, 103),
       appBar: AppBar(
-        icon: Icon(Icons.school_sharp),
-        backgroundColor:  const Color.fromARGB(255, 31, 126, 182),
-        centerTitle: true,
-        title: Text('TO-DO App'), titleTextStyle: TextStyle(fontSize: 30, color: const Color.fromARGB(255, 255, 17, 0), fontWeight: FontWeight.bold),
+        title: const Text('Asian College Final'),
       ),
-      //ToDo List view theme
       body: Column(
         children: [
           Padding(
@@ -71,48 +72,151 @@ class _TodoListScreenState extends State<TodoListScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Add a new task',
-                      fillColor: Colors.black,
+                    controller: _todoController,
+                    decoration: const InputDecoration(
+                      hintText: 'Add New Task',
                       border: OutlineInputBorder(),
                     ),
-                    onSubmitted: (value) {
-                      _addTodoItem(value);
-                    },
                   ),
                 ),
-                SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    _addTodoItem(_controller.text);
-                  },
-                  child: Text('Add'),
+                const SizedBox(width: 5),
+                SizedBox(
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _addTask,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Icon(Icons.add),
+                  ),
                 ),
               ],
             ),
           ),
-
           Expanded(
-            child: todoItems.isEmpty
-                ? Center(child: Text('No tasks yet! Add some.'))
+            child: _tasks.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.task_alt,
+                          size: 64,
+                          color: Colors.blue.withOpacity(0.5),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No tasks yet. Add a new task!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 : ListView.builder(
-              itemCount: todoItems.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(todoItems[index]),
-                  trailing: IconButton(
-                    icon: Icon(Icons.delete),
-                    onPressed: () {
-                      _deleteTodoItem(index);
+                    itemCount: _tasks.length,
+                    itemBuilder: (context, index) {
+                      return _buildTaskItem(_tasks[index]);
                     },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _showDeleteCompletedDialog();
+        },
+        child: const Icon(Icons.cleaning_services),
+      ),
     );
+  }
+
+  Widget _buildTaskItem(Task task) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ListTile(
+        leading: Checkbox(
+          value: task.isCompleted,
+          activeColor: Colors.blue,
+          onChanged: (value) {
+            setState(() {
+              task.isCompleted = value ?? false;
+            });
+          },
+        ),
+        title: Text(
+          task.title,
+          style: TextStyle(
+            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+            color: task.isCompleted ? Colors.grey : Colors.black,
+          ),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete, color: Colors.red),
+          onPressed: () => _deleteTask(task),
+        ),
+      ),
+    );
+  }
+
+  void _addTask() {
+    final title = _todoController.text.trim();
+    if (title.isNotEmpty) {
+      setState(() {
+        _tasks.add(
+          Task(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            title: title,
+          ),
+        );
+        _todoController.clear();
+      });
+    }
+  }
+
+  void _deleteTask(Task task) {
+    setState(() {
+      _tasks.removeWhere((t) => t.id == task.id);
+    });
+  }
+
+  void _showDeleteCompletedDialog() {
+    if (_tasks.any((task) => task.isCompleted)) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete Completed Tasks'),
+          content: const Text('Do you want to delete all completed tasks?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _tasks.removeWhere((task) => task.isCompleted);
+                });
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.blue),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No completed tasks to delete'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
